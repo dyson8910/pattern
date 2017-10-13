@@ -1,4 +1,5 @@
 import numpy as np
+from matplotlib import pyplot as plt
 
 #loading data
 def loading(dataset):
@@ -17,10 +18,29 @@ def loading(dataset):
 def distance(p0,p1):
     return np.sum( (p0-p1)**2 )
 
+#mode
+def mode(arr):
+    x = []
+    counter = []
+    x.append(arr[0])
+    counter.append(1)
+    for i in range(1,len(arr)):
+        name = arr[i]
+        for j in range(len(x)):
+            if arr[j] == name:
+                counter[j] += 1
+                break
+            if j == len(x)-1:
+                x.append(name)
+                counter.append(1)
+    mode_idx = np.argmax(counter)
+    mode = x[mode_idx]
+    return mode   
+    
 #k nearest neighbor classifier 
 def knn(train_features,train_labels,test_features,k):
     dists = []
-    for f in range(len(train_features)):
+    for f in train_features:
         dist = distance(f,test_features)
         dists.append(dist)
     idx = np.argsort(dists)
@@ -28,7 +48,7 @@ def knn(train_features,train_labels,test_features,k):
     for i in range(k):
         name = train_labels[idx[i]]
         neighbors.append(name)
-    
+    test_label = mode(neighbors)
     return test_label
 
 #predict labels
@@ -49,5 +69,28 @@ def accuracy(features,labels,k,model = knn):
 
 features,labels = loading("iris.data")
 
-for i in range(1,30):
+x = []
+y = []
+
+for i in range(1,31):
+    x.append(i)
+    y.append(accuracy(features,labels,i))
+
+#describe the result
+def graph(x,y):
+    plt.scatter(x,y)
+    plt.title('Accuracy of KNN on iris data')
+    plt.xlabel('k')
+    plt.ylabel('Accuracy')
+    plt.xlim(0,31)
+    filename = "Accuracy_of_KNN.png"
+    plt.savefig(filename)
+    plt.show()
+
+for t in range(len(x)):
+    print(x[t],y[t])
     
+i = np.argmax(y)
+print(x[i])
+
+graph(x,y)
