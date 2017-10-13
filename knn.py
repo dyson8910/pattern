@@ -65,6 +65,7 @@ def predict(features,labels,k,model = knn):
 #calculate accuracy
 def accuracy(features,labels,k,model = knn):
     preds = predict(features,labels,k,model)
+    print(preds == labels)
     return np.mean(preds == labels)
 
 features,labels = loading("iris.data")
