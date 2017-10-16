@@ -27,15 +27,16 @@ def mode(arr):
     for i in range(1,len(arr)):
         name = arr[i]
         for j in range(len(x)):
-            if arr[j] == name:
+            if x[j] == name:
                 counter[j] += 1
-                break
+                break;
             if j == len(x)-1:
                 x.append(name)
                 counter.append(1)
     mode_idx = np.argmax(counter)
-    mode = x[mode_idx]
-    return mode   
+    mode_label = x[mode_idx]
+    print(x,counter)
+    return mode_label   
     
 #k nearest neighbor classifier 
 def knn(train_features,train_labels,test_features,k):
