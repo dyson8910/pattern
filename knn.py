@@ -29,7 +29,7 @@ def mode(arr):
         for j in range(len(x)):
             if x[j] == name:
                 counter[j] += 1
-                break;
+                break
             if j == len(x)-1:
                 x.append(name)
                 counter.append(1)
