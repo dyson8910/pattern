@@ -22,6 +22,7 @@ def regression(data,x1,x2):
         wb = np.dot(np.dot(XTX_inv,XT),t)
         w = wb[:-1]
         b = wb[-1]
+        print "w,b"
         print w,b
         return X,w,b
 
@@ -48,5 +49,3 @@ def plot(data):
 
 data = loading('auto-mpg.data')
 plot(data)
-
-
