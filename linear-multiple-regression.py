@@ -48,3 +48,4 @@ def plot(data):
 
 data = loading('auto-mpg.data')
 plot(data)
+
