@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -29,60 +28,73 @@ class Sigmoid:
         self.out = 1.0/(1.0 + np.exp(-x))
         return self.out
     def backward(self,dout):
-        dx = dout * (1.0 - self.out) * self.out
-        return dx
+        delta = dout * (1.0 - self.out) * self.out
+        return delta
 class Softmax:
-    def __init__(self,output_size):
+    def __init__(self):
         self.out = None
-        self.output_size = output_size
     def forward(self,x):
-        c = np.max(x)
-        out = np.exp(x-c)
-        s = np.sum(out)
-        self.out = out/s
+        if x.ndim == 2:
+            x_ = x.transpose()
+            x_ = x_ - np.max(x_,axis=0)
+            out = np.exp(x_)/np.sum(np.exp(x_),axis=0)
+            self.out = out.transpose()
+        else:
+            x_ = x - np.max(x)
+            out = np.exp(x_)/np.sum(np.exp(x_))
+            self.out = out
         return self.out
     def backward(self,dout):
-        dx = (self.out - dout)/self.output_size
-        return dx
+        delta = self.out - dout
+        return delta
 class NeuralNet:
-    def __init__(self,input_size,hidden_num,output_size):
-        self.layer = []
-        self.w = []
-        self.b = []
+    def __init__(self,size):
+        hidden_num = len(size)-2
+        self.layer = np.array([None]*(hidden_num+1))
+        self.w = np.array([None]*(hidden_num+1))
+        self.dw = np.array([None]*(hidden_num+1))
+        self.b = np.array([None]*(hidden_num+1))
+        self.db = np.array([None]*(hidden_num+1))
         for i in range(hidden_num):
-            self.layer.append(Sigmoid())
-            self.w.append(0.01*np.random.randn(input_size,input_size))
-            self.b.append(np.zeros(input_size))
-        self.layer.append(Softmax(output_size))
-        self.w.append(0.01*np.random.randn(input_size,output_size))
-        self.b.append(np.zeros(output_size))
-        self.x = np.zeros((hidden_num+1,input_size))
+            self.layer[i] = Sigmoid()
+            self.w[i] = 0.01*np.random.randn(size[i],size[i+1])
+            self.dw[i] = np.zeros((size[i],size[i+1]))
+            self.b[i] = np.zeros(size[i+1])
+            self.db[i] = np.zeros(size[i+1])
+        self.layer[hidden_num] = Softmax()
+        self.w[hidden_num] = 0.01*np.random.randn(size[hidden_num],size[hidden_num+1])
+        self.dw[hidden_num] = np.zeros((size[hidden_num],size[hidden_num+1]))
+        self.b[hidden_num] = np.zeros(size[hidden_num+1])
+        self.db[hidden_num] = np.zeros(size[hidden_num+1])
         self.hidden_num = hidden_num
+        self.x = [None]*(hidden_num+1)
     def forward(self,x):
         x_ = x
         for i in range(self.hidden_num+1):
             self.x[i] = x_
-            u = np.dot(self.x[i],self.w[i]) + self.b[i]
+            u = np.dot(x_,self.w[i]) + self.b[i]
             x_ = self.layer[i].forward(u)
         return x_
-    def backward(self,t,batch_size,learning_rate):
+    def backward(self,t,batch_size):
         d = t
         for i in range(self.hidden_num+1):
             delta = self.layer[self.hidden_num-i].backward(d)
-            self.w[self.hidden_num-i] = self.w[self.hidden_num-i] - learning_rate * np.dot(self.x[self.hidden_num-i].reshape(-1,batch_size),delta.reshape(batch_size,-1))
-            self.b[self.hidden_num-i] = self.b[self.hidden_num-i] - learning_rate * delta
-            d = np.dot(self.w[self.hidden_num-i],delta)
-
-    def train(self,data,label,limit=100,learning_rate=0.01):
+            x_ = self.x[self.hidden_num-i].reshape(batch_size,-1)
+            x_ = x_.transpose()
+            delta_ = delta.reshape(batch_size,-1)
+            self.dw[self.hidden_num-i] += np.dot(x_,delta_)
+            self.db[self.hidden_num-i] += np.dot(np.ones((1,batch_size)),delta_).reshape(-1)
+            d = np.dot(delta_,self.w[self.hidden_num-i].transpose())
+    def train(self,data,label,batch_size,limit=100,learning_rate=0.1):
         for i in range(limit):
-            flag = 0
-            for j in range(len(label)):
-                y = self.forward(data[j])
-                self.backward(label[j],1,learning_rate)
-                if(np.argmax(y) != np.argmax(label[j])):
-                    flag = 1
-            if(flag == 0):
-                break
+            idx = np.random.permutation(len(data))
+            for j in range(len(label)/batch_size):
+                y = self.forward(data[idx[j*batch_size:(j+1)*batch_size]])
+                self.backward(label[idx[j*batch_size:(j+1)*batch_size]],batch_size)
+                self.w -= self.dw * learning_rate / float(batch_size)
+                self.b -= self.db * learning_rate / float(batch_size)
+                self.dw = np.zeros_like(self.dw)
+                self.db = np.zeros_like(self.db)
 
     def check(self,test,ans):
         correct = 0
@@ -93,26 +105,28 @@ class NeuralNet:
                 correct += 1
         accuracy = correct / float(num)
         return accuracy
-
-    def graph(self,train_data,train_label,test_data,test_label,limit=50):
-        x = range(1,limit+1)
-        y = []
-        for i in x:
-            self.train(train_data,train_label,1)
-            y_ = self.check(test_data,test_label)
-            y.append(y_)
-            print i
-            print y_
+    def graph(self,x,y,filename,xlabel,ylabel):
+        plt.figure()
         plt.plot(x,y)
-        plt.title("Accuracy of NeuralNetwork")
-        plt.xlabel("times")
-        plt.ylabel("Accuracy")
-        plt.xlim(0,limit+1)
-        filename = "Accuracy_of_NeuralNetwork.png"
-        plt.savefig(filename)
-        plt.show()
-        print np.argmax(y)+1
-        print y[np.argmax(y)]
-            
-n = NeuralNet(784,1,10)
-n.graph(train_data,train_t,test_data,test_t)
+        plt.title(filename)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.xlim(0,len(x)+1)
+        plt.savefig(filename+".png")
+        
+    def learn(self,train_data,train_label,test_data,test_label,batch_size,filename,xlabel,ylabel,limit=30):
+        x = range(1,limit+1)
+        y = np.array([])
+        for i in x:
+            self.train(train_data,train_label,batch_size,1,1.0/np.cbrt(i))
+            y_ = self.check(test_data,test_label)
+            y = np.append(y,y_)
+            print(i)
+            print(y_)
+        print(np.argmax(y)+1)
+        print(y[np.argmax(y)])
+        self.graph(x,y,filename,xlabel,ylabel)
+        return x,y
+
+n = NeuralNet([784,500,300,100,10])
+n.learn(train_data,train_t,test_data,test_t,100,"Accuracy_of_4layers_NeuralNet","epoch","accuracy")
